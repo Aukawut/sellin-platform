@@ -1,0 +1,26 @@
+# ความลับและข้อมูลของผู้ใช้ ห้ามเข้า repo
+/.env
+server/.env
+server/storage/
+*.env.local
+
+# ข้อมูลยอดขายจริงของบริษัท ห้ามเข้า repo แม้จะเป็น private
+# golden test ต้องใช้ไฟล์เหล่านี้ วิธีสร้างขึ้นมาใหม่อยู่ใน README หัวข้อ "ทดสอบ"
+server/testdata/template.xlsx
+server/testdata/golden_dashboard.json
+
+# ผลลัพธ์การ build
+server/bin/
+server/api
+server/migrate
+web/dist/
+web/node_modules/
+
+# ไฟล์ชั่วคราวของระบบปฏิบัติการและ editor
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# ไฟล์ที่ Excel สร้างขณะเปิดไฟล์ค้างไว้
+~$*.xlsx

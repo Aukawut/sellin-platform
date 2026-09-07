@@ -1,0 +1,207 @@
+@import "tailwindcss";
+
+/* โหมดมืดถูกควบคุมด้วย data-theme บน <html> ไม่ใช่ class
+   เพื่อให้ค่าที่ผู้ใช้เลือกเองชนะการตั้งค่าของระบบปฏิบัติการได้ทั้งสองทาง */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* ---------- โทนสี ----------
+   คงสายสีของแบรนด์เดิมไว้ (กรมท่า + ส้มอำพัน) แต่ปรับความสว่างให้อ่านได้ทั้งสองโหมด
+   และแยก "สีเน้น" ออกจาก "สีบอกสถานะ" เพื่อไม่ให้ส้มที่เป็นสีแบรนด์ชนกับส้มที่แปลว่าเตือน */
+:root {
+  color-scheme: light;
+
+  --ground: #f5f6f9;
+  --paper: #ffffff;
+  --sunk: #edeff4;
+  --ink: #14192a;
+  --ink-2: #3b4459;
+  --muted: #5a6478;
+  --faint: #8b93a6;
+  --line: #e1e5ec;
+  --line-soft: #ebeef3;
+
+  --accent: #b45f12;
+  --accent-ink: #8a4708;
+  --accent-wash: #faefe2;
+
+  --good: #0e6e5c;
+  --good-wash: #e2f0ec;
+  --warn: #b45f12;
+  --warn-wash: #faefe2;
+  --bad: #a93a2e;
+  --bad-wash: #f7e6e3;
+  --info: #2f4a8c;
+  --info-wash: #e7ecf7;
+
+  /* จานสีสำหรับแยกเส้นและแท่งในกราฟออกจากกัน
+     แยกจากสีบอกสถานะโดยตั้งใจ เพื่อไม่ให้สีที่แปลว่า "เตือน" ไปปนกับสีที่แปลว่า "กลุ่มสินค้า ก" */
+  --c1: #2f4a8c;
+  --c2: #b45f12;
+  --c3: #0e6e5c;
+  --c4: #6b4ca8;
+  --c5: #a93a2e;
+  --c6: #3c7f96;
+  --c7: #7a6320;
+  --c8: #96437a;
+
+  --shadow: 0 1px 1px rgb(20 25 42 / 4%), 0 10px 28px -20px rgb(20 25 42 / 30%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --ground: #0e121c;
+    --paper: #161b28;
+    --sunk: #1c2230;
+    --ink: #e7eaf2;
+    --ink-2: #c2c9d8;
+    --muted: #98a1b4;
+    --faint: #6f7897;
+    --line: #283041;
+    --line-soft: #232a38;
+
+    --accent: #e39a4e;
+    --accent-ink: #f0b573;
+    --accent-wash: #2a2015;
+
+    --good: #4fbfa5;
+    --good-wash: #132521;
+    --warn: #e39a4e;
+    --warn-wash: #2a2015;
+    --bad: #e08579;
+    --bad-wash: #2a1815;
+    --info: #8aa6e0;
+    --info-wash: #171e2e;
+
+    --c1: #8aa6e0;
+    --c2: #e39a4e;
+    --c3: #4fbfa5;
+    --c4: #b191e8;
+    --c5: #e08579;
+    --c6: #6fb6cf;
+    --c7: #ceb055;
+    --c8: #dd8ec2;
+
+    --shadow: 0 1px 1px rgb(0 0 0 / 30%), 0 12px 32px -22px rgb(0 0 0 / 90%);
+  }
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --ground: #0e121c;
+  --paper: #161b28;
+  --sunk: #1c2230;
+  --ink: #e7eaf2;
+  --ink-2: #c2c9d8;
+  --muted: #98a1b4;
+  --faint: #6f7897;
+  --line: #283041;
+  --line-soft: #232a38;
+
+  --accent: #e39a4e;
+  --accent-ink: #f0b573;
+  --accent-wash: #2a2015;
+
+  --good: #4fbfa5;
+  --good-wash: #132521;
+  --warn: #e39a4e;
+  --warn-wash: #2a2015;
+  --bad: #e08579;
+  --bad-wash: #2a1815;
+  --info: #8aa6e0;
+  --info-wash: #171e2e;
+
+  --c1: #8aa6e0;
+  --c2: #e39a4e;
+  --c3: #4fbfa5;
+  --c4: #b191e8;
+  --c5: #e08579;
+  --c6: #6fb6cf;
+  --c7: #ceb055;
+  --c8: #dd8ec2;
+
+  --shadow: 0 1px 1px rgb(0 0 0 / 30%), 0 12px 32px -22px rgb(0 0 0 / 90%);
+}
+
+@theme inline {
+  --color-ground: var(--ground);
+  --color-paper: var(--paper);
+  --color-sunk: var(--sunk);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-wash: var(--accent-wash);
+
+  --color-good: var(--good);
+  --color-good-wash: var(--good-wash);
+  --color-warn: var(--warn);
+  --color-warn-wash: var(--warn-wash);
+  --color-bad: var(--bad);
+  --color-bad-wash: var(--bad-wash);
+  --color-info: var(--info);
+  --color-info-wash: var(--info-wash);
+
+  --color-c1: var(--c1);
+  --color-c2: var(--c2);
+  --color-c3: var(--c3);
+  --color-c4: var(--c4);
+  --color-c5: var(--c5);
+  --color-c6: var(--c6);
+  --color-c7: var(--c7);
+  --color-c8: var(--c8);
+
+  /* IBM Plex Sans Thai สำหรับหัวเรื่องและ UI, Sarabun สำหรับเนื้อความ,
+     Plex Mono สำหรับตัวเลขที่ต้องเรียงตรงหลักกันในตาราง */
+  --font-display: "IBM Plex Sans Thai", "Sarabun", system-ui, sans-serif;
+  --font-sans: "Sarabun", "IBM Plex Sans Thai", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+
+  --shadow-panel: var(--shadow);
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.65;
+    margin: 0;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    text-wrap: balance;
+  }
+
+  /* ตัวเลขทุกที่ที่เรียงเป็นคอลัมน์ต้องกว้างเท่ากันทุกหลัก ไม่งั้นอ่านเทียบกันไม่ได้ */
+  .tnum {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

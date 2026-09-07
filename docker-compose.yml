@@ -1,0 +1,42 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: sellin
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sellin}
+      POSTGRES_DB: sellin
+      TZ: Asia/Bangkok
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sellin -d sellin"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: ./server
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      PORT: "8080"
+      DATABASE_URL: postgres://sellin:${POSTGRES_PASSWORD:-sellin}@db:5432/sellin?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET:?ต้องตั้งค่า JWT_SECRET ก่อนรัน}
+      STORAGE_DIR: /app/storage
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+    volumes:
+      # ไฟล์ Excel ต้นฉบับอยู่บน volume นี้ การสำรองข้อมูลต้องครอบทั้ง volume นี้และฐานข้อมูล
+      # โดยทำ pg_dump ก่อนแล้วค่อยคัดลอก volume เสมอ ลำดับนี้ทำให้เกิดได้แค่ไฟล์กำพร้าซึ่งไม่เสียหาย
+      - uploads:/app/storage
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  db-data:
+  uploads:

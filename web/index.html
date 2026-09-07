@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sell-In Performance</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Sarabun:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+    />
+    <script>
+      // ตั้งธีมก่อนที่ React จะ mount เพื่อไม่ให้หน้าจอกระพริบเป็นสีขาวก่อนแล้วค่อยเปลี่ยนเป็นมืด
+      (function () {
+        try {
+          var saved = localStorage.getItem('sellin.theme')
+          if (saved === 'light' || saved === 'dark') {
+            document.documentElement.setAttribute('data-theme', saved)
+          }
+        } catch (e) {
+          /* โหมดส่วนตัวของเบราว์เซอร์อาจห้ามอ่าน localStorage ปล่อยให้ใช้ค่าของระบบไป */
+        }
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
