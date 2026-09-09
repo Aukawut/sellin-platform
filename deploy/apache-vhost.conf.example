@@ -1,0 +1,97 @@
+# vhost ของ Apache ใน XAMPP — เสิร์ฟหน้าเว็บที่ http://203.150.191.169:8081/
+# แล้ว proxy /api ไปที่ API ใน Docker ที่ 127.0.0.1:7779
+#
+# ก่อนใช้ ต้องเปิดโมดูลใน httpd.conf (ลบ # หน้าบรรทัดเหล่านี้):
+#     LoadModule proxy_module modules/mod_proxy.so
+#     LoadModule proxy_http_module modules/mod_proxy_http.so
+#     LoadModule rewrite_module modules/mod_rewrite.so
+#     LoadModule headers_module modules/mod_headers.so
+#     LoadModule expires_module modules/mod_expires.so
+#
+# วางต่อท้าย C:\xampp\apache\conf\extra\httpd-vhosts.conf
+# ตรวจไวยากรณ์: C:\xampp\apache\bin\httpd.exe -t   แล้ว Stop/Start Apache จาก Control Panel
+
+Listen 8081
+
+<VirtualHost *:8081>
+    ServerName 203.150.191.169
+    ServerAlias 192.168.249.169 localhost
+
+    # วางเนื้อในของ web/dist ไว้ที่นี่ (ให้ index.html อยู่ชั้นบนสุดของโฟลเดอร์นี้)
+    DocumentRoot "C:/xampp/htdocs/site-sale-distributor"
+    DirectoryIndex index.html
+
+    ErrorLog "logs/site_sale_distributor_error.log"
+    CustomLog "logs/site_sale_distributor_access.log" combined
+
+    # 50MB มากกว่า MAX_UPLOAD_MB=25 ใน .env พอเผื่อส่วนหัวของ multipart แล้ว
+    LimitRequestBody 52428800
+
+    ProxyRequests Off
+    ProxyPreserveHost On
+    # export ไฟล์ Excel ขนาดใหญ่ใช้เวลานานกว่าค่าเริ่มต้นได้
+    ProxyTimeout 180
+
+    # ลำดับสำคัญ: Apache ใช้กฎแรกที่ตรง prefix ไม่ใช่กฎที่เจาะจงที่สุด
+    # ถ้าเอา /api ขึ้นก่อน มันจะกลืน /api/sale_distributor/ ไปด้วย ระบบเก่าจะพัง
+    # ---- ระบบเดิม (Version 1) ถ้าเลิกใช้แล้วลบสองบรรทัดนี้ทิ้งได้เลย ----
+    ProxyPass        "/api/sale_distributor/"  "http://127.0.0.1:5001/"
+    ProxyPassReverse "/api/sale_distributor/"  "http://127.0.0.1:5001/"
+
+    # ---- Sell-In Platform (Version 2) ----
+    # ห้ามมี / ปิดท้ายทั้งสองฝั่ง เพราะ API ต้องได้รับ path เต็ม /api/v1/...
+    # ถ้าใส่ / ปิดท้าย Apache จะตัด prefix ออกแล้วยิงไปเป็น /v1/... ซึ่ง API ไม่รู้จัก
+    # และ cookie ที่ผูกกับ path /api/v1/auth จะไม่ถูกเบราว์เซอร์ส่งกลับมาด้วย
+    ProxyPass        "/api"  "http://127.0.0.1:7779/api"
+    ProxyPassReverse "/api"  "http://127.0.0.1:7779/api"
+
+    ProxyPass        "/healthz" "http://127.0.0.1:7779/healthz"
+    ProxyPass        "/readyz"  "http://127.0.0.1:7779/readyz"
+
+    # CORS ผูกไว้เฉพาะระบบเดิม ห้ามตั้งที่ระดับ vhost
+    # เพราะ Header always set จะไปทับ header ที่ API ของ Version 2 ส่งมาเองด้วย
+    # กลายเป็น Access-Control-Allow-Origin: * คู่กับ Allow-Credentials: true
+    # ซึ่งเป็นคู่ที่เบราว์เซอร์ปฏิเสธเสมอ ถ้าวันใดหน้าเว็บย้ายไปคนละ origin จะพังทันที
+    # ส่วน Version 2 ไม่ต้องใช้ CORS เลย เพราะวิ่งผ่าน origin เดียวกันกับหน้าเว็บอยู่แล้ว
+    <Location "/api/sale_distributor/">
+        Header always set Access-Control-Allow-Origin "*"
+        Header always set Access-Control-Allow-Methods "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+        Header always set Access-Control-Allow-Headers "Content-Type, Authorization"
+    </Location>
+
+    <Directory "C:/xampp/htdocs/site-sale-distributor">
+        Options -Indexes +FollowSymLinks
+        AllowOverride All
+        Require all granted
+
+        # SPA: เส้นทางฝั่ง React ไม่มีไฟล์จริงบนดิสก์ ถ้าไม่มีบรรทัดนี้
+        # การกด F5 บนหน้าอื่นที่ไม่ใช่หน้าแรก หรือเปิดลิงก์ตรง จะได้ 404
+        RewriteEngine On
+        RewriteCond %{REQUEST_URI} !^/api/
+        RewriteCond %{REQUEST_FILENAME} !-f
+        RewriteCond %{REQUEST_FILENAME} !-d
+        RewriteRule ^ /index.html [L]
+    </Directory>
+
+    # ไฟล์ที่ Vite ใส่ hash ในชื่อไว้แล้ว แคชยาวได้อย่างปลอดภัย
+    <IfModule mod_expires.c>
+        <LocationMatch "^/assets/">
+            ExpiresActive On
+            ExpiresDefault "access plus 1 year"
+            <IfModule mod_headers.c>
+                Header set Cache-Control "public, immutable"
+            </IfModule>
+        </LocationMatch>
+    </IfModule>
+
+    <IfModule mod_deflate.c>
+        AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json image/svg+xml
+    </IfModule>
+
+    # index.html ห้ามแคช ไม่งั้นผู้ใช้จะค้างอยู่กับ build เก่าหลัง deploy รอบถัดไป
+    <IfModule mod_headers.c>
+        <Files "index.html">
+            Header set Cache-Control "no-store"
+        </Files>
+    </IfModule>
+</VirtualHost>

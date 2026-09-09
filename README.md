@@ -356,23 +356,34 @@ docker compose ps              # api ต้องขึ้น healthy
 docker compose run --rm api /app/migrate \
   -email you@prospira.com -name "ชื่อของคุณ" -password "รหัสผ่านอย่างน้อย12ตัว" create-admin
 
-# 4. build หน้าเว็บแล้ววางให้ nginx (เสิร์ฟที่พอร์ต 8081)
+# 4. build หน้าเว็บแล้ววางให้เว็บเซิร์ฟเวอร์ (เสิร์ฟที่พอร์ต 8081)
 cd web && npm ci && npm run build
-sudo rsync -a --delete dist/ /var/www/sellin/
-sudo cp deploy/nginx.conf.example /etc/nginx/conf.d/sellin.conf
-sudo nginx -t && sudo systemctl reload nginx
+# XAMPP (Windows): คัดลอกเนื้อใน dist ไปที่ C:\xampp\htdocs\sellin
+#                  แล้วต่อ deploy/apache-vhost.conf.example ท้าย conf/extra/httpd-vhosts.conf
+# nginx:           sudo rsync -a --delete dist/ /var/www/sellin/
+#                  sudo cp deploy/nginx.conf.example /etc/nginx/conf.d/sellin.conf
+#                  sudo nginx -t && sudo systemctl reload nginx
 ```
+
+ถ้าใช้ XAMPP ต้องเปิดโมดูล `mod_proxy`, `mod_proxy_http` และ `mod_rewrite` ใน `httpd.conf` ก่อน
+รายละเอียดทั้งหมดอยู่ในหัวคอมเมนต์ของ `deploy/apache-vhost.conf.example`
 
 ### หน้าเว็บกับ API ต้องอยู่ origin เดียวกัน
 
-ที่ติดตั้งอยู่ตอนนี้เปิดที่ `http://203.150.191.169:8081/` nginx ที่พอร์ตนั้น
+ที่ติดตั้งอยู่ตอนนี้เปิดที่ `http://203.150.191.169:8081/` เว็บเซิร์ฟเวอร์ที่พอร์ตนั้น
 ต้องเสิร์ฟ `web/dist` และ **proxy `/api` ไปที่ `127.0.0.1:7779` ในตัวเดียวกัน**
-ตัวอย่างที่ใช้ได้จริงอยู่ที่ `deploy/nginx.conf.example`
+ตัวอย่างที่ใช้ได้จริงมีให้สองแบบ เลือกตามที่ติดตั้งไว้บนเครื่อง:
+
+- `deploy/apache-vhost.conf.example` — Apache ที่มากับ XAMPP
+- `deploy/nginx.conf.example` — nginx
 
 เหตุผลคือหน้าเว็บเรียก API ด้วย path แบบ relative (`/api/v1`) และ refresh token เดินทาง
 เป็น cookie แบบ `HttpOnly` + `SameSite=Strict` ที่ผูกกับ path `/api/v1/auth`
 ถ้าให้เบราว์เซอร์ยิงไปที่พอร์ต 7779 ตรง ๆ จะกลายเป็นคนละ origin แล้ว cookie จะไม่ถูกส่งกลับมา
 ผู้ใช้จะถูกเด้งออกทุก 15 นาทีตอน access token หมดอายุ
+
+เว็บเซิร์ฟเวอร์กับ API อยู่คนละที่: หน้าเว็บถูกเสิร์ฟโดย Apache/nginx บนเครื่อง
+ส่วน API อยู่ใน Docker ทั้งคู่คุยกันผ่าน `127.0.0.1` ของเครื่องเดียวกัน
 
 API รับ request ที่ **พอร์ต 7779** ของเครื่อง (ภายใน container ยังเป็น 8080 ตามเดิม
 ไม่ต้องแก้ ไม่มีใครเห็นพอร์ตนั้นนอกจาก Docker) เปลี่ยนได้ที่ `API_PORT` ใน `.env`

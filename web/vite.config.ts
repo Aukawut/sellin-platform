@@ -18,6 +18,9 @@ export default defineConfig(({ mode }) => {
         },
       },
     },
-    build: { sourcemap: true },
+    build: {
+      sourcemap: true,
+      chunkSizeWarningLimit: 1000, // in KB
+    },
   }
 })
