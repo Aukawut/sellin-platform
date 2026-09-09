@@ -52,7 +52,7 @@ export function UploadPanel({ onUploaded }: { onUploaded: (id: string) => void }
   }
 
   return (
-    <section className="flex flex-col gap-3 rounded-xl border border-line bg-paper p-5 shadow-panel">
+    <section className="upload-panel flex flex-col gap-4 rounded-2xl border border-line bg-paper p-5 shadow-panel">
       <div>
         <h2 className="font-display text-[15px] font-semibold">นำเข้าไฟล์ใหม่</h2>
         <p className="mt-0.5 text-[13px] text-muted">
@@ -68,9 +68,9 @@ export function UploadPanel({ onUploaded }: { onUploaded: (id: string) => void }
         onDragLeave={() => setDragging(false)}
         onDrop={onDrop}
         className={`flex flex-col items-center gap-2 rounded-xl border border-dashed px-5 py-8 text-center transition
-          ${dragging ? 'border-accent bg-accent-wash' : 'border-line bg-sunk/40'}`}
+          ${dragging ? 'border-accent bg-accent-wash' : 'border-info/30 bg-info-wash/50'}`}
       >
-        <Icon icon={file ? FileSpreadsheet : Upload} size={22} className="text-faint" />
+        <Icon icon={file ? FileSpreadsheet : Upload} size={30} className="text-info" />
         {file ? (
           <p className="text-[13px]">
             <span className="font-semibold">{file.name}</span>

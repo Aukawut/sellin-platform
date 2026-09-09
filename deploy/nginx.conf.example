@@ -1,0 +1,64 @@
+# ตัวอย่างการเสิร์ฟหน้าเว็บที่ http://203.150.191.169:8081/ แล้วต่อเข้า API
+# คัดลอกไปที่ /etc/nginx/conf.d/sellin.conf แล้วสั่ง: nginx -t && systemctl reload nginx
+#
+# หัวใจของไฟล์นี้คือหน้าเว็บกับ /api ต้องอยู่ origin เดียวกัน คือ http://203.150.191.169:8081
+# หน้าเว็บเรียก API ด้วย path แบบ relative (/api/v1) และ refresh token เดินทางเป็น cookie
+# แบบ HttpOnly + SameSite=Strict ที่ผูกกับ path /api/v1/auth
+# ถ้าแยกไปยิงพอร์ต 7779 ตรง ๆ เบราว์เซอร์จะถือว่าคนละ origin แล้วไม่ส่ง cookie นั้นกลับมา
+# ผลคือผู้ใช้ถูกเด้งออกทุกครั้งที่ access token หมดอายุ (15 นาที)
+
+server {
+    listen 8081;
+    server_name 203.150.191.169;
+
+    # ผลลัพธ์จาก: cd web && npm run build  แล้วคัดลอก web/dist มาไว้ที่นี่
+    root /var/www/sellin;
+    index index.html;
+
+    # ต้องมากกว่า MAX_UPLOAD_MB ใน .env เผื่อส่วนหัวของ multipart
+    # ถ้าตั้งน้อยกว่า nginx จะตัดตั้งแต่ยังไม่ถึง API ผู้ใช้จะเห็นแค่ 413 โดยไม่มี log ฝั่งแอป
+    client_max_body_size 30m;
+
+    gzip on;
+    gzip_types text/css application/javascript application/json image/svg+xml;
+
+    # ไฟล์ที่ Vite ใส่ hash ในชื่อไว้แล้ว แคชยาวได้อย่างปลอดภัย
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # SPA: เส้นทางฝั่ง React ไม่มีไฟล์จริงบนดิสก์ ต้องตกกลับมาที่ index.html
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # proxy_pass ต้องไม่มี path ต่อท้าย เพื่อให้ path เดิมถูกส่งต่อครบ
+    # cookie ของ refresh token ผูกกับ /api/v1/auth ถ้า path เพี้ยนไปเบราว์เซอร์จะไม่ส่งกลับมา
+    location /api/ {
+        proxy_pass http://127.0.0.1:7779;
+        proxy_http_version 1.1;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # export ไฟล์ Excel ขนาดใหญ่ใช้เวลานานกว่า 60 วินาทีที่เป็นค่าเริ่มต้นได้
+        proxy_read_timeout    180s;
+        proxy_send_timeout    180s;
+        proxy_request_buffering off;   # ส่งไฟล์อัปโหลดต่อทันที ไม่ต้องรอเขียนลงดิสก์ของ nginx ก่อน
+    }
+
+    location = /healthz { proxy_pass http://127.0.0.1:7779/healthz; access_log off; }
+    location = /readyz  { proxy_pass http://127.0.0.1:7779/readyz;  access_log off; }
+}
+
+# เมื่อใดมีโดเมนและใบรับรองแล้ว ให้ย้ายมาบล็อกนี้แทน แล้วตั้ง COOKIE_SECURE=true ใน .env
+# server {
+#     listen 443 ssl;
+#     http2 on;
+#     server_name sellin.prospira.com;
+#     ssl_certificate     /etc/letsencrypt/live/sellin.prospira.com/fullchain.pem;
+#     ssl_certificate_key /etc/letsencrypt/live/sellin.prospira.com/privkey.pem;
+#     ... ส่วนที่เหลือเหมือนด้านบน ...
+# }

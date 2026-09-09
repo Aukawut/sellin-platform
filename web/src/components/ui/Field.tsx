@@ -1,7 +1,7 @@
 import type { InputHTMLAttributes, SelectHTMLAttributes, ReactNode } from 'react'
 
 const control =
-  'w-full rounded-lg border border-line bg-paper px-3 py-2 text-[14px] text-ink ' +
+  'ui-control min-h-10 w-full rounded-lg border border-line bg-paper px-3 py-2 text-[14px] text-ink ' +
   'placeholder:text-faint transition focus:border-accent'
 
 export function Label({ children }: { children: ReactNode }) {

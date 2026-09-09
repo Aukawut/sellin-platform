@@ -6,6 +6,7 @@ import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Field'
 import { Icon } from '../../components/ui/Icon'
 import { ApiError } from '../../lib/api'
+import { LoginParticles } from './LoginParticles'
 
 export function LoginPage() {
   const { login } = useAuth()
@@ -28,9 +29,10 @@ export function LoginPage() {
   }
 
   return (
-    <div className="grid min-h-dvh place-items-center px-5 py-10">
-      <main className="w-full max-w-[380px]">
-        <div className="mb-7 flex items-center gap-3">
+    <div className="login-page grid min-h-dvh place-items-center px-5 py-10">
+      <LoginParticles />
+      <main className="login-content w-full max-w-[420px]">
+        <div className="login-brand mb-8 flex items-center gap-3">
           <span className="grid size-10 place-items-center rounded-xl bg-accent text-white">
             <Icon icon={TrendingUp} size={20} />
           </span>
@@ -44,8 +46,12 @@ export function LoginPage() {
 
         <form
           onSubmit={handleSubmit}
-          className="flex flex-col gap-4 rounded-xl border border-line bg-paper p-6 shadow-panel"
+          className="login-form flex flex-col gap-5 rounded-2xl border border-line bg-paper p-7 shadow-panel"
         >
+          <div className="mb-1">
+            <h2 className="text-[24px] font-bold">เข้าสู่ระบบ</h2>
+            <p className="mt-1 text-[13px] text-muted">จัดการข้อมูลและติดตามผลการขายของคุณ</p>
+          </div>
           <Input
             label="อีเมล"
             type="email"

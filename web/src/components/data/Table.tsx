@@ -28,7 +28,7 @@ export function DataTable<T>({ columns, rows, rowKey, stripe, empty }: Props<T>)
 
   return (
     // ตารางกว้างเลื่อนในกรอบของตัวเอง หน้าเว็บทั้งหน้าจึงไม่เลื่อนออกด้านข้าง
-    <div className="overflow-x-auto">
+    <div className="data-table overflow-x-auto">
       <table className="w-full min-w-[640px] border-collapse text-[13px]">
         <thead>
           <tr>
@@ -49,7 +49,7 @@ export function DataTable<T>({ columns, rows, rowKey, stripe, empty }: Props<T>)
           {rows.map((row) => {
             const color = stripe?.(row)
             return (
-              <tr key={rowKey(row)} className="border-b border-line-soft last:border-b-0">
+              <tr key={rowKey(row)} className="border-b border-line-soft transition-colors hover:bg-info-wash/40 last:border-b-0">
                 {columns.map((c, ci) => (
                   <td
                     key={c.key}

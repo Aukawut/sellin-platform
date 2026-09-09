@@ -7,7 +7,7 @@ import { deltaText, formatKpi, num, thbShort } from '../../lib/format'
  */
 export function KpiRow({ kpis, labels }: { kpis: Kpi[]; labels: Record<string, string> }) {
   return (
-    <div className="grid grid-cols-1 divide-y divide-line rounded-xl border border-line bg-paper shadow-panel sm:grid-cols-2 sm:divide-y-0 lg:grid-cols-4">
+    <div className="kpi-row grid grid-cols-1 divide-y divide-line rounded-xl border border-line bg-paper shadow-panel sm:grid-cols-2 sm:divide-y-0 lg:grid-cols-4">
       {kpis.map((k, i) => (
         <KpiTile key={k.key} kpi={k} label={labels[k.key] ?? k.key} first={i === 0} />
       ))}
@@ -24,10 +24,10 @@ function KpiTile({ kpi, label, first }: { kpi: Kpi; label: string; first: boolea
         : 'text-good'
 
   return (
-    <div className={`px-5 py-4 sm:border-l sm:border-line ${first ? 'sm:border-l-0' : ''}`}>
+    <div className={`kpi-tile px-5 py-5 sm:border-l sm:border-line ${first ? 'sm:border-l-0' : ''}`}>
       <p className="text-[12px] font-medium text-muted">{label}</p>
       <p
-        className={`tnum mt-1 text-[25px] font-semibold leading-tight tracking-tight ${
+        className={`tnum mt-1 text-[30px] font-semibold leading-tight tracking-tight ${
           kpi.available ? 'text-ink' : 'text-faint'
         }`}
       >

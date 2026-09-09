@@ -23,6 +23,12 @@ type Config struct {
 	AccessTokenTTL  time.Duration
 	RefreshTokenTTL time.Duration
 
+	// CookieSecure ตั้ง flag Secure ให้ cookie ของ refresh token
+	// ค่าเริ่มต้นเปิดเมื่อ APP_ENV=production แต่แยกออกมาเป็นค่าของตัวเองได้
+	// เพราะบางที่ deploy หลัง HTTP ธรรมดา (เช่นเปิดด้วย IP ในเครือข่ายภายใน)
+	// ถ้าปล่อยให้ Secure ติดอยู่ เบราว์เซอร์จะไม่ส่ง cookie กลับมา แล้วล็อกอินจะค้างเป็นวงจร
+	CookieSecure bool
+
 	StorageDir  string
 	MaxUploadMB int64
 
@@ -49,6 +55,7 @@ func Load() (*Config, error) {
 		CORSOrigins:     splitAndTrim(env("CORS_ORIGINS", "http://localhost:5173")),
 		PurgeAfterDays:  envInt("PURGE_AFTER_DAYS", 90),
 	}
+	c.CookieSecure = envBool("COOKIE_SECURE", c.IsProduction())
 
 	var missing []string
 	if c.DatabaseURL == "" {
@@ -78,6 +85,13 @@ func env(key, def string) string {
 
 func envInt(key string, def int) int {
 	if v, err := strconv.Atoi(env(key, "")); err == nil {
+		return v
+	}
+	return def
+}
+
+func envBool(key string, def bool) bool {
+	if v, err := strconv.ParseBool(env(key, "")); err == nil {
 		return v
 	}
 	return def

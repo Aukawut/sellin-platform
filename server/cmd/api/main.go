@@ -42,6 +42,11 @@ func main() {
 		os.Exit(1)
 	}
 
+	// เตือนไว้ให้เห็นใน log ตอนบูต ไม่ใช่ตอนสืบหาสาเหตุว่าทำไมข้อมูลรั่ว
+	if cfg.IsProduction() && !cfg.CookieSecure {
+		log.Warn("COOKIE_SECURE=false รหัสผ่านและ token เดินทางแบบไม่เข้ารหัส ใช้ได้เฉพาะตอนยังไม่มี HTTPS")
+	}
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
@@ -112,7 +117,7 @@ func main() {
 		return c.Next()
 	})
 
-	authHandler := handlers.NewAuthHandler(authSvc, cfg.IsProduction(), cfg.RefreshTokenTTL)
+	authHandler := handlers.NewAuthHandler(authSvc, cfg.CookieSecure, cfg.RefreshTokenTTL)
 
 	// จำกัดอัตราการล็อกอินเพื่อกันการเดารหัสผ่านแบบไล่ลอง
 	loginLimiter := limiter.New(limiter.Config{

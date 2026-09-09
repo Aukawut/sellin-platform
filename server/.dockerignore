@@ -1,0 +1,30 @@
+# build context ต้องมีแต่ซอร์ส ไฟล์ข้อมูลจริงห้ามหลุดเข้าไปใน image
+# เพราะ image ถูกส่งต่อและ cache ได้ ใครดึง image ไปก็อ่านไฟล์ที่ติดไปด้วยได้ทันที
+
+# ข้อมูลของลูกค้า: Excel ต้นฉบับที่ผู้ใช้อัปโหลด ตอนรันจริงมาจาก named volume แทน
+storage/
+
+# ข้อมูลยอดขายจริงที่ใช้ทำ golden test
+testdata/
+
+# ความลับ
+.env
+.env.*
+!.env.example
+
+# ผลลัพธ์ build ของเครื่อง dev สถาปัตยกรรมอาจไม่ตรงกับ image
+bin/
+api
+migrate
+
+# ไฟล์ระบบและ editor
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# git metadata ไม่มีผลต่อการ build แต่ทำให้ context ใหญ่ขึ้นมาก
+.git/
+.gitignore
+Dockerfile
+.dockerignore

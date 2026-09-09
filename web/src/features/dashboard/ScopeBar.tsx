@@ -25,14 +25,14 @@ export function ScopeBar({ title, subtitle, extra }: Props) {
   const dirty = scope.dc !== 'ALL' || scope.year !== 'ALL' || scope.month !== 'ALL'
 
   return (
-    <div className="sticky top-14 z-30 border-b border-line bg-paper/85 backdrop-blur">
-      <div className="mx-auto flex max-w-[1400px] flex-wrap items-end justify-between gap-x-5 gap-y-3 px-5 py-3">
+    <div className="scope-bar z-30 border-b border-line bg-paper/95 backdrop-blur">
+      <div className="mx-auto flex max-w-[1400px] flex-wrap items-end justify-between gap-x-5 gap-y-4 px-5 py-5">
         <div className="min-w-0">
-          <h1 className="font-display text-[17px] font-bold tracking-tight">{title}</h1>
+          <h1 className="font-display text-[24px] font-bold tracking-tight">{title}</h1>
           <p className="mt-0.5 max-w-[62ch] text-[12.5px] text-muted">{subtitle}</p>
         </div>
 
-        <div className="flex flex-wrap items-end gap-2.5">
+        <div className="scope-controls flex flex-wrap items-end gap-2.5">
           <label className="flex flex-col gap-1.5">
             <span className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted">
               <Icon icon={FileSpreadsheet} size={11} />

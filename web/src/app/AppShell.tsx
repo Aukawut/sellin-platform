@@ -24,38 +24,38 @@ export function AppShell() {
 
   return (
     <div className="min-h-dvh">
-      <header className="sticky top-0 z-40 border-b border-line bg-paper/85 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-[1400px] items-center gap-4 px-5">
-          <NavLink to={`/datasets`} className="flex shrink-0 items-center gap-2.5">
+      <header className="app-header sticky top-0 z-40">
+        <div className="app-header-inner mx-auto flex max-w-[1400px] items-center gap-4 px-5">
+          <NavLink to={`/datasets`} aria-label="Sell-In Performance — คลังไฟล์ข้อมูล" className="app-brand flex shrink-0 items-center gap-2.5">
             <span className="grid size-8 place-items-center rounded-lg bg-accent text-white">
               <Icon icon={TrendingUp} size={17} />
             </span>
-            <span className="hidden font-display text-[14px] font-bold tracking-tight sm:block">
+            <span className="font-display text-[14px] font-bold tracking-tight">
               Sell-In Performance
             </span>
           </NavLink>
 
-          <nav className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto">
+          <nav aria-label="เมนูหลัก" className="app-nav flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
             <NavLink
               to="/datasets"
               className={({ isActive }) => tabClass(isActive)}
               title="คลังไฟล์ข้อมูล"
             >
               <Icon icon={LibraryBig} size={15} />
-              <span className="hidden md:inline">คลังไฟล์</span>
+              <span className="whitespace-nowrap">คลังไฟล์</span>
             </NavLink>
 
             <span className="mx-1 h-5 w-px shrink-0 bg-line" aria-hidden />
 
             {tabs.map((t) => (
-              <NavLink key={t.to} to={`${t.to}${suffix}`} className={({ isActive }) => tabClass(isActive)}>
+              <NavLink key={t.to} to={`${t.to}${suffix}`} aria-label={t.label} className={({ isActive }) => tabClass(isActive)}>
                 <Icon icon={t.icon} size={15} />
-                <span className="hidden md:inline">{t.label}</span>
+                <span className="whitespace-nowrap">{t.label}</span>
               </NavLink>
             ))}
           </nav>
 
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="app-account flex shrink-0 items-center gap-2">
             <ThemeToggle />
             <div className="hidden text-right lg:block">
               <p className="text-[12.5px] font-semibold leading-tight">{user?.display_name}</p>
@@ -92,7 +92,7 @@ export function AppShell() {
 }
 
 function tabClass(isActive: boolean) {
-  return `flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-semibold transition ${
-    isActive ? 'bg-accent-wash text-accent-ink' : 'text-muted hover:bg-sunk hover:text-ink'
+  return `app-tab flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-semibold transition ${
+    isActive ? 'app-tab-active' : 'app-tab-idle'
   }`
 }

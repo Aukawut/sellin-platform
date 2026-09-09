@@ -23,7 +23,7 @@
 
 ## Stack
 
-- **Backend** Go 1.24 · Fiber v2 · Hexagonal architecture · pgx/v5
+- **Backend** Go 1.26 · Fiber v2 · Hexagonal architecture · pgx/v5
 - **Database** PostgreSQL 16
 - **Frontend** React + TypeScript · Tailwind CSS · Recharts (+ Chart.js เฉพาะกราฟรายวัน) · Lucide icons
 
@@ -54,11 +54,10 @@ curl http://localhost:8080/healthz   # โปรเซสยังอยู่
 curl http://localhost:8080/readyz    # ต่อฐานข้อมูลได้จริง
 ```
 
-รันทั้งระบบด้วย Docker:
+รันทั้งระบบด้วย Docker (compose รัน migration ให้เองก่อน api จะขึ้น):
 
 ```bash
 docker compose up -d --build
-docker compose exec api /app/migrate up
 ```
 
 ## รันหน้าเว็บ
@@ -181,9 +180,9 @@ nc -z localhost 5433 && echo ok       # พอร์ตเปิดจากเ�
 docker compose logs db --tail 30      # ดูข้อความผิดพลาดของฐานข้อมูล
 ```
 
-**หมายเหตุเรื่องความปลอดภัย** — พอร์ต 5433 ถูกเปิดที่ `0.0.0.0` ซึ่งหมายถึงเครื่องอื่นในเครือข่ายเดียวกันก็ต่อเข้ามาได้
-สะดวกตอนพัฒนา แต่ก่อนขึ้นเซิร์ฟเวอร์จริงควรแก้ `docker-compose.yml` เป็น `"127.0.0.1:5433:5432"`
-เพื่อให้ต่อได้เฉพาะจากตัวเครื่องเอง หรือถอดบล็อก `ports` ของ `db` ออกทั้งหมด
+**หมายเหตุเรื่องความปลอดภัย** — พอร์ต 5433 ผูกกับ `127.0.0.1` เป็นค่าเริ่มต้น
+ต่อได้เฉพาะจากตัวเครื่องเอง ถ้าต้องต่อจากเครื่องอื่นจริง ๆ ให้ตั้ง `DB_BIND=0.0.0.0` ใน `.env`
+และต้องมี firewall คุมไว้ด้วยเสมอ บนเซิร์ฟเวอร์จริงถ้าไม่ต้องใช้ ให้ถอดบล็อก `ports` ของ `db` ออกทั้งหมด
 เพราะ `api` คุยกับ `db` ผ่านเครือข่ายภายในของ compose อยู่แล้ว ไม่ต้องพึ่งพอร์ตที่เปิดออกมา
 
 ### ตารางที่น่าสนใจ
@@ -337,9 +336,100 @@ server/
 6. **พิกัดแผนที่เป็นของหน้าเว็บ** backend ส่งเฉพาะรหัสศูนย์กับยอด ไม่ส่งพิกัด x/y
    เพราะพิกัดเป็นคุณสมบัติของภาพ SVG ไม่ใช่ของข้อมูล
 
+## Deploy ขึ้นเซิร์ฟเวอร์
+
+`docker-compose.yml` ครอบสามอย่าง: `db` (PostgreSQL 16), `migrate` (งานครั้งเดียวจบ
+ที่อัปเดต schema) และ `api` ส่วนหน้าเว็บ build แล้ววางให้ nginx บนเครื่องเสิร์ฟเอง
+
+```bash
+# 1. เตรียมความลับ
+cp .env.example .env
+openssl rand -base64 48        # ใช้เป็น JWT_SECRET
+openssl rand -base64 32        # ใช้เป็น POSTGRES_PASSWORD
+# แก้ .env ให้ครบ: APP_ENV=production และ COOKIE_SECURE=false ตราบใดที่ยังเป็น http
+
+# 2. สตาร์ท api + ฐานข้อมูล  (migrate ถูกเรียกให้อัตโนมัติก่อน api ขึ้น)
+docker compose up -d --build
+docker compose ps              # api ต้องขึ้น healthy
+
+# 3. สร้างบัญชี admin คนแรก ทำครั้งเดียวตอนติดตั้ง
+docker compose run --rm api /app/migrate \
+  -email you@prospira.com -name "ชื่อของคุณ" -password "รหัสผ่านอย่างน้อย12ตัว" create-admin
+
+# 4. build หน้าเว็บแล้ววางให้ nginx (เสิร์ฟที่พอร์ต 8081)
+cd web && npm ci && npm run build
+sudo rsync -a --delete dist/ /var/www/sellin/
+sudo cp deploy/nginx.conf.example /etc/nginx/conf.d/sellin.conf
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+### หน้าเว็บกับ API ต้องอยู่ origin เดียวกัน
+
+ที่ติดตั้งอยู่ตอนนี้เปิดที่ `http://203.150.191.169:8081/` nginx ที่พอร์ตนั้น
+ต้องเสิร์ฟ `web/dist` และ **proxy `/api` ไปที่ `127.0.0.1:7779` ในตัวเดียวกัน**
+ตัวอย่างที่ใช้ได้จริงอยู่ที่ `deploy/nginx.conf.example`
+
+เหตุผลคือหน้าเว็บเรียก API ด้วย path แบบ relative (`/api/v1`) และ refresh token เดินทาง
+เป็น cookie แบบ `HttpOnly` + `SameSite=Strict` ที่ผูกกับ path `/api/v1/auth`
+ถ้าให้เบราว์เซอร์ยิงไปที่พอร์ต 7779 ตรง ๆ จะกลายเป็นคนละ origin แล้ว cookie จะไม่ถูกส่งกลับมา
+ผู้ใช้จะถูกเด้งออกทุก 15 นาทีตอน access token หมดอายุ
+
+API รับ request ที่ **พอร์ต 7779** ของเครื่อง (ภายใน container ยังเป็น 8080 ตามเดิม
+ไม่ต้องแก้ ไม่มีใครเห็นพอร์ตนั้นนอกจาก Docker) เปลี่ยนได้ที่ `API_PORT` ใน `.env`
+
+ค่าเริ่มต้นผูกพอร์ตกับ `127.0.0.1` ทั้ง api (7779) และ db (5433)
+ให้ nginx บนเครื่องเดียวกันเรียกเท่านั้น พอร์ตที่เปิดออกสู่ภายนอกจึงมีแค่ 8081 ของ nginx
+ถ้าต้องให้เครื่องอื่นเรียก API ตรง (Postman, ระบบอื่นที่มาดึงข้อมูล) ให้ตั้ง `API_BIND=0.0.0.0`
+แล้วเปิด 7779 ที่ firewall — แต่หน้าเว็บยังต้องวิ่งผ่าน nginx ที่ 8081 เหมือนเดิม
+เพราะ cookie ผูกกับ origin ไม่ใช่ผูกกับพอร์ตของ API
+
+### `COOKIE_SECURE` กับการยังไม่มี HTTPS
+
+`COOKIE_SECURE` ควบคุม flag `Secure` ของ cookie refresh token แยกจาก `APP_ENV`
+ปล่อยว่าง = เปิดเองเมื่อ `APP_ENV=production`
+
+ตราบใดที่ยังเปิดเว็บด้วย `http://IP:8081` ต้องตั้ง **`COOKIE_SECURE=false`**
+เพราะ cookie ที่มี flag `Secure` จะไม่ถูกเบราว์เซอร์ส่งกลับมาบน http ธรรมดา
+อาการคือล็อกอินผ่าน แต่พอ access token หมดอายุจะเด้งกลับหน้า login โดยไม่มี error ให้เห็น
+
+แลกมาด้วยความเสี่ยงที่ต้องรู้ตัว: บน http รหัสผ่าน token และยอดขายทั้งหมด
+เดินทางแบบไม่เข้ารหัส ใครดักกลางทางได้ก็อ่านได้ทั้งหมด `203.150.191.169` เป็น IP สาธารณะ
+จึงควรวางแผนไปสู่ HTTPS — ใส่โดเมนแล้วออกใบรับรองด้วย Let's Encrypt
+หรือถ้าใช้แค่ในเครือข่ายภายในก็จำกัดด้วย firewall ไว้ก่อน
+เมื่อขึ้น HTTPS แล้วให้ลบบรรทัด `COOKIE_SECURE=false` ออกแล้ว `docker compose up -d`
+
+### อัปเดตเวอร์ชันใหม่
+
+```bash
+git pull
+docker compose up -d --build       # migrate รันเองก่อน api ตัวใหม่จะขึ้น
+docker image prune -f
+```
+
+### ตรวจสอบและแก้ปัญหา
+
+```bash
+docker compose logs -f api          # log เป็น JSON บรรทัดละ event
+docker compose logs migrate         # ถ้า api ไม่ยอมขึ้น ให้ดูอันนี้ก่อน
+curl -s http://127.0.0.1:7779/readyz   # ต่อฐานข้อมูลได้จริงหรือไม่
+```
+
+`api` จะไม่สตาร์ทถ้า `migrate` ล้มเหลว ตั้งใจให้เป็นแบบนี้ —
+โค้ดใหม่ที่รันบน schema เก่าอาจเขียนข้อมูลผิดรูปลงฐานข้อมูลโดยไม่มีใครรู้
+
 ## ข้อควรระวังตอน deploy
 
 ไฟล์ Excel ต้นฉบับอยู่บน Docker volume ส่วน metadata อยู่ใน Postgres
 การสำรองข้อมูลต้อง **`pg_dump` ก่อน แล้วค่อยคัดลอก volume** เสมอ
 ลำดับนี้ทำให้กรณีแย่ที่สุดคือมีไฟล์กำพร้าที่ไม่มี record ชี้ถึง ซึ่งไม่ทำให้ระบบเสียหาย
 ถ้าทำสลับลำดับจะได้ record ที่ชี้ไปยังไฟล์ที่ยังไม่มีอยู่แทน
+
+```bash
+# สำรองข้อมูล ทำตามลำดับนี้เท่านั้น
+docker compose exec -T db pg_dump -U sellin -Fc sellin > backup-$(date +%F).dump
+docker run --rm -v sellin_uploads:/data -v "$PWD":/out alpine \
+  tar czf /out/uploads-$(date +%F).tar.gz -C /data .
+```
+
+ไฟล์ `.env` ไม่ได้อยู่ใน repo ต้องสำรองแยกไว้ที่ปลอดภัย ถ้า `JWT_SECRET` หาย
+ระบบยังใช้งานได้แต่ผู้ใช้ทุกคนจะถูกบังคับล็อกอินใหม่

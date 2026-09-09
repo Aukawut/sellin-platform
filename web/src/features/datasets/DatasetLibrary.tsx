@@ -31,11 +31,11 @@ export function DatasetLibrary() {
   useDatasetDetail(watching, true)
 
   return (
-    <div className="mx-auto grid w-full max-w-[1180px] gap-6 px-5 py-7 lg:grid-cols-[minmax(0,1fr)_340px]">
+    <div className="dataset-library mx-auto grid w-full max-w-[1180px] gap-6 px-5 py-7 lg:grid-cols-[minmax(0,1fr)_340px]">
       <section className="order-2 lg:order-1">
         <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="font-display text-[20px] font-bold tracking-tight">คลังไฟล์ข้อมูล</h1>
+            <h1 className="font-display text-[28px] font-bold tracking-tight">คลังไฟล์ข้อมูล</h1>
             <p className="mt-0.5 text-[13px] text-muted">
               เลือกไฟล์ที่ต้องการ แล้วระบบจะสร้าง dashboard จากชุดข้อมูลนั้น
             </p>
@@ -50,7 +50,7 @@ export function DatasetLibrary() {
                 type="button"
                 onClick={() => setShowTrash(t.v)}
                 className={`rounded-[6px] px-3 py-1.5 text-[12.5px] font-semibold transition ${
-                  showTrash === t.v ? 'bg-sunk text-ink' : 'text-muted hover:text-ink'
+                  showTrash === t.v ? 'bg-info-wash text-info' : 'text-muted hover:text-ink'
                 }`}
               >
                 {t.label}
@@ -115,7 +115,7 @@ function DatasetCard({
   const totalRows = Object.values(live.row_counts ?? {}).reduce((a, b) => a + b, 0)
 
   return (
-    <li className="rounded-xl border border-line bg-paper p-4 shadow-panel">
+    <li className="dataset-card rounded-2xl border border-line bg-paper p-5 shadow-panel">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">

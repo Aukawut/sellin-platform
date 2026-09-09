@@ -1,41 +1,107 @@
+# ระบบนี้ deploy สามส่วน: ฐานข้อมูล, ตัวรัน migration และ API
+# หน้าเว็บ (web/dist) ไม่อยู่ในไฟล์นี้ — build แล้ววางให้ nginx บนเครื่องเสิร์ฟเอง
+# nginx ต้อง proxy /api ไปที่ API เพื่อให้เบราว์เซอร์เห็นเป็น origin เดียวกัน
+# ไม่งั้น cookie ของ refresh token (SameSite=Strict) จะไม่ถูกส่ง แล้วผู้ใช้จะหลุดล็อกอินทุก 15 นาที
+# ตัวอย่างการตั้งค่าอยู่ที่ deploy/nginx.conf.example
+
+name: sellin
+
+# ค่าที่ api กับ migrate ต้องใช้เหมือนกัน ประกาศครั้งเดียวกันลืมแก้ไม่ครบ
+# migrate ก็ต้องมี JWT_SECRET ด้วย เพราะทั้งสองคำสั่งใช้ config.Load() ตัวเดียวกัน
+x-app-env: &app-env
+  APP_ENV: ${APP_ENV:-production}
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  TZ: Asia/Bangkok
+  # รหัสผ่านที่มีอักขระพิเศษ (@ : / ? #) ต้อง URL-encode ก่อนใส่ใน .env
+  DATABASE_URL: postgres://${POSTGRES_USER:-sellin}:${POSTGRES_PASSWORD:?ต้องตั้งค่า POSTGRES_PASSWORD ใน .env ก่อนรัน}@db:5432/${POSTGRES_DB:-sellin}?sslmode=disable
+  JWT_SECRET: ${JWT_SECRET:?ต้องตั้งค่า JWT_SECRET ใน .env ก่อนรัน}
+
+# จำกัดขนาด log ไม่ให้กินดิสก์จนเครื่องเต็ม ซึ่งจะทำให้ Postgres เขียนไม่ได้ตามไปด้วย
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "20m"
+    max-file: "5"
+
 services:
   db:
     image: postgres:16-alpine
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: sellin
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sellin}
-      POSTGRES_DB: sellin
+      POSTGRES_USER: ${POSTGRES_USER:-sellin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?ต้องตั้งค่า POSTGRES_PASSWORD ใน .env ก่อนรัน}
+      POSTGRES_DB: ${POSTGRES_DB:-sellin}
       TZ: Asia/Bangkok
+      # ตั้งตอน initdb เท่านั้น เปลี่ยนทีหลังไม่มีผลกับ volume ที่สร้างไปแล้ว
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8"
     volumes:
       - db-data:/var/lib/postgresql/data
+    # ผูกกับ localhost เท่านั้น ฐานข้อมูลไม่ควรเปิดให้เครือข่ายภายนอกต่อตรง
+    # ถ้าไม่ต้องต่อจากเครื่อง (psql, DBeaver, pg_dump) ลบบล็อก ports ทิ้งได้เลย
     ports:
-      - "5433:5432"
+      - "${DB_BIND:-127.0.0.1}:${DB_PORT:-5433}:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U sellin -d sellin"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sellin} -d ${POSTGRES_DB:-sellin}"]
       interval: 5s
       timeout: 3s
       retries: 10
+      start_period: 10s
+    security_opt:
+      - no-new-privileges:true
+    logging: *logging
+
+  # งานครั้งเดียวจบ: อัปเดต schema ให้ตรงกับโค้ดก่อน api จะเริ่มรับ request
+  # goose ข้าม migration ที่รันไปแล้ว สั่ง up ซ้ำทุกครั้งที่ deploy จึงปลอดภัย
+  migrate:
+    build:
+      context: ./server
+    image: ${IMAGE_NAME:-sellin-api}:${IMAGE_TAG:-local}
+    command: ["/app/migrate", "up"]
+    environment: *app-env
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+    security_opt:
+      - no-new-privileges:true
+    logging: *logging
 
   api:
     build:
       context: ./server
+    image: ${IMAGE_NAME:-sellin-api}:${IMAGE_TAG:-local}
     environment:
-      APP_ENV: ${APP_ENV:-production}
+      <<: *app-env
       PORT: "8080"
-      DATABASE_URL: postgres://sellin:${POSTGRES_PASSWORD:-sellin}@db:5432/sellin?sslmode=disable
-      JWT_SECRET: ${JWT_SECRET:?ต้องตั้งค่า JWT_SECRET ก่อนรัน}
       STORAGE_DIR: /app/storage
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-25}
+      ACCESS_TOKEN_TTL: ${ACCESS_TOKEN_TTL:-15m}
+      REFRESH_TOKEN_TTL: ${REFRESH_TOKEN_TTL:-168h}
+      PURGE_AFTER_DAYS: ${PURGE_AFTER_DAYS:-90}
+      # ปล่อยว่างไว้ = ตามค่าเริ่มต้นในโค้ด (เปิดเมื่อ APP_ENV=production)
+      # ต้องตั้งเป็น false ถ้าเปิดเว็บผ่าน http ธรรมดา ไม่งั้นเบราว์เซอร์จะไม่ส่ง cookie กลับมา
+      COOKIE_SECURE: ${COOKIE_SECURE:-}
+      # ใช้เฉพาะกรณีหน้าเว็บอยู่คนละ origin กับ API ถ้า proxy ผ่าน nginx เดียวกันค่านี้ไม่ถูกใช้
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
     volumes:
       # ไฟล์ Excel ต้นฉบับอยู่บน volume นี้ การสำรองข้อมูลต้องครอบทั้ง volume นี้และฐานข้อมูล
       # โดยทำ pg_dump ก่อนแล้วค่อยคัดลอก volume เสมอ ลำดับนี้ทำให้เกิดได้แค่ไฟล์กำพร้าซึ่งไม่เสียหาย
       - uploads:/app/storage
+    # 7779 คือพอร์ตที่มองเห็นจากตัวเครื่อง ส่วน 8080 คือพอร์ตภายใน container ซึ่งไม่ต้องแก้
+    # เปิดเฉพาะ localhost ให้ nginx บนเครื่องเดียวกัน proxy เข้ามา
     ports:
-      - "8080:8080"
+      - "${API_BIND:-127.0.0.1}:${API_PORT:-7779}:8080"
     depends_on:
       db:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
+    # api รอ request ที่ค้างอยู่ไม่เกิน 20 วินาทีตอนปิด เผื่อเวลาให้มากกว่านั้นเล็กน้อย
+    stop_grace_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    logging: *logging
 
 volumes:
   db-data:
