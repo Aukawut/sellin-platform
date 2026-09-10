@@ -159,7 +159,7 @@ node scripts/generate_thailand_map.mjs   # เขียนทับ src/componen
 compose เปิดพอร์ตของ Postgres ออกมาที่ **5433** โดยตั้งใจ ไม่ใช่ 5432
 เพื่อไม่ให้ชนกับ PostgreSQL ที่อาจติดตั้งไว้ในเครื่องอยู่แล้ว
 
-ตั้งค่าใน DBeaver (New Connection → PostgreSQL):
+ค่าที่ใช้ต่อเหมือนกันทุกเครื่องมือ (pgAdmin, DBeaver, psql):
 
 | ช่อง | ค่า |
 |---|---|
@@ -168,16 +168,47 @@ compose เปิดพอร์ตของ Postgres ออกมาที่ *
 | Database | `sellin` |
 | Username | `sellin` |
 | Password | ค่าของ `POSTGRES_PASSWORD` ในไฟล์ `.env` |
-| SSL | ปิด |
+| SSL mode | `disable` (การเชื่อมต่อไม่ออกนอกเครื่องอยู่แล้ว) |
 
-ครั้งแรกที่เชื่อมต่อ DBeaver จะถามว่าจะดาวน์โหลด driver ของ PostgreSQL ไหม — ตอบ Download
+**pgAdmin ที่ติดตั้งบนเซิร์ฟเวอร์** — ใช้ได้ทันทีโดยไม่ต้องแก้ `docker-compose.yml`
+เพราะพอร์ต 5433 ผูกกับ `127.0.0.1` ของเครื่องนั้นอยู่แล้ว
+
+1. เปิด pgAdmin แล้วคลิกขวาที่ Servers → Register → Server
+2. แท็บ **General** ตั้ง Name เป็นอะไรก็ได้ เช่น `Sell-In (Docker)`
+3. แท็บ **Connection** กรอกตามตารางข้างบน แล้วติ๊ก Save password
+4. Save — ตารางทั้งหมดอยู่ที่ `sellin` → Schemas → public → Tables
+
+Host ต้องเป็น `localhost` ไม่ใช่ `db` — ชื่อ `db` ใช้ได้เฉพาะระหว่าง container ด้วยกัน
+
+**DBeaver** ใช้ค่าชุดเดียวกัน ครั้งแรกจะถามว่าจะดาวน์โหลด driver ของ PostgreSQL ไหม — ตอบ Download
 
 ถ้าเชื่อมต่อไม่ได้ ให้ไล่ตรวจตามลำดับนี้:
 
 ```bash
 docker compose ps db                  # ต้องขึ้น Up (healthy)
-nc -z localhost 5433 && echo ok       # พอร์ตเปิดจากเครื่อง Host จริงไหม
 docker compose logs db --tail 30      # ดูข้อความผิดพลาดของฐานข้อมูล
+```
+
+```powershell
+# Windows: พอร์ตเปิดจากเครื่องจริงไหม
+Test-NetConnection localhost -Port 5433
+```
+
+**ถ้าขึ้น `password authentication failed for user "sellin"`** แปลว่าต่อถึง Postgres แล้ว
+แต่รหัสผ่านไม่ตรง สาเหตุเกือบทั้งหมดคือ `POSTGRES_PASSWORD` **มีผลตอน initdb ครั้งแรกครั้งเดียว**
+แก้ค่าใน `.env` ทีหลังไม่เปลี่ยนรหัสผ่านของ volume ที่สร้างไปแล้ว
+
+```bash
+docker volume ls                      # มี volume เก่าจากโปรเจกต์ชื่ออื่นค้างอยู่ไหม
+docker ps --format "{{.Names}}\t{{.Ports}}"   # ใครถือพอร์ต 5433 อยู่
+
+# ทางเลือกที่ 1 — เก็บข้อมูลไว้ เปลี่ยนรหัสผ่านในฐานข้อมูลให้ตรงกับ .env
+# psql ผ่าน socket ในตัว container ไม่ต้องใช้รหัสผ่าน จึงเข้าไปแก้ได้เสมอ
+docker compose exec db psql -U sellin -d sellin -c "ALTER USER sellin WITH PASSWORD 'ค่าเดียวกับใน .env';"
+
+# ทางเลือกที่ 2 — ล้างเริ่มใหม่ ใช้ได้เฉพาะตอนยังไม่มีข้อมูลจริง
+# -v ลบ volume ทั้งหมดรวมไฟล์ Excel ที่อัปโหลดไว้ด้วย
+docker compose down -v && docker compose up -d --build
 ```
 
 **หมายเหตุเรื่องความปลอดภัย** — พอร์ต 5433 ผูกกับ `127.0.0.1` เป็นค่าเริ่มต้น
@@ -195,6 +226,21 @@ docker compose logs db --tail 30      # ดูข้อความผิดพ�
 | `dim_customers` · `dim_products` | ศูนย์กระจายสินค้าและสินค้า พร้อมคอลัมน์ `region` และ `status` |
 | `import_issues` | ปัญหาที่พบตอนนำเข้า แยกตาม severity |
 | `audit_log` | การเข้าสู่ระบบ อัปโหลด ลบ กู้คืน |
+
+**แก้ข้อมูลผ่าน pgAdmin ได้ แต่มีสามอย่างที่ไม่ควรทำ** เพราะระบบจะไม่รู้ตัวและไม่มี audit บันทึกไว้
+
+1. **อย่าลบแถวใน `datasets` ทิ้งตรง ๆ** — ทุกตาราง fact ผูกด้วย `ON DELETE CASCADE`
+   ลบหนึ่งแถวคือลบข้อมูลของทั้งไฟล์ทันทีแบบเงียบ ๆ และย้อนไม่ได้
+   ส่วนไฟล์ Excel ต้นฉบับบน volume ยังอยู่ กลายเป็นไฟล์กำพร้าที่ไม่มี record ชี้ถึง
+   ถ้าจะลบชุดข้อมูล ให้ลบผ่านหน้าเว็บซึ่งทำ soft delete (`deleted_at`) และกู้คืนได้
+2. **อย่าแก้ `password_hash` หรือ `role` ในตาราง `users` ด้วยมือ** — เปลี่ยนรหัสผ่านต้องผ่านหน้าเว็บ
+   เพราะ hash เป็น Argon2 ที่มีพารามิเตอร์เฉพาะ ใส่ค่าผิดรูปแล้วบัญชีนั้นจะล็อกอินไม่ได้อีกเลย
+3. **อย่าแก้แถวใน `goose_db_version`** — เป็นสมุดบัญชีของ migration ถ้าเพี้ยนแล้ว deploy รอบหน้าจะพัง
+
+สิ่งที่ทำได้ปลอดภัย: query ดูข้อมูลและ export ผลลัพธ์ไปทำรายงานต่อ
+ส่วนการแก้ภาคของศูนย์ (`dim_customers.region`) ให้ใช้หน้า Admin แทนการ UPDATE เอง
+เพราะค่าในตารางนี้แยกตาม `dataset_id` แก้ด้วย SQL จะมีผลกับไฟล์เดียว
+พออัปโหลดไฟล์ใหม่ก็กลับไปเป็นค่าเดิมโดยไม่รู้ตัว
 
 ทุกตาราง fact มี `dataset_id` เป็นคอลัมน์แรกของ index เสมอ
 เวลา query เองอย่าลืมใส่เงื่อนไขนี้ ไม่งั้นจะได้ข้อมูลของหลายไฟล์ปนกัน:

@@ -60,7 +60,7 @@ export function LoginPage() {
             autoFocus
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@prospira.com"
+            placeholder="you@example.com"
           />
           <Input
             label="รหัสผ่าน"
