@@ -26,12 +26,15 @@ export function AppShell() {
     <div className="min-h-dvh">
       <header className="app-header sticky top-0 z-40">
         <div className="app-header-inner mx-auto flex max-w-[1400px] items-center gap-4 px-5">
-          <NavLink to={`/datasets`} aria-label="Sell-In Performance — คลังไฟล์ข้อมูล" className="app-brand flex shrink-0 items-center gap-2.5">
+          <NavLink to={`/datasets`} aria-label="Value Plus Worldwide Sale Performance PB — คลังไฟล์ข้อมูล" className="app-brand flex shrink-0 items-center gap-2.5">
             <span className="grid size-8 place-items-center rounded-lg bg-accent text-white">
               <Icon icon={TrendingUp} size={17} />
             </span>
-            <span className="font-display text-[14px] font-bold tracking-tight">
-              Sell-In Performance
+            <span className="flex flex-col">
+              <span className="text-[10.5px] font-medium leading-tight text-faint">Value Plus Worldwide</span>
+              <span className="font-display text-[14px] font-bold leading-tight tracking-tight">
+                Sale Performance PB
+              </span>
             </span>
           </NavLink>
 
