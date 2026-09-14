@@ -38,7 +38,7 @@ export function LoginPage() {
           </span>
           <div>
             <h1 className="text-[19px] font-bold leading-tight tracking-tight">
-              Sale Performance PB
+              Sale Performance BP
             </h1>
             <p className="text-xs text-muted">Value Plus Worldwide</p>
           </div>
